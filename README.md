@@ -1,0 +1,1 @@
+# dbricks-cli-globalinitscript
