@@ -5,7 +5,7 @@ COPY . .
 RUN pip install --upgrade pip && \
     pip install --upgrade databricks-cli
 #host = https://northeurope.azuredatabricks.net/?o=7257592137201481
-#token = dapif937bba4dee1057491ce267ab70eaecb
+#token = dapi35899fd8d2d6b278ff29c4647f372373
 ENV dbrick_wkspace website_dbricks
 ENV dbrick_tokenpw token_password
 ENV user userdbks
@@ -21,7 +21,10 @@ RUN adduser userdbks sudo
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 ADD databrickscfg /userdbks/.databrickscfg
 ADD rep_env.sh /userdbks/rep_env.sh
+ADD external_metastore.sh /userdbks/external_metastore.sh
 RUN chown -hR userdbks /usr/src/databricks-cli
+RUN chmod +x /userdbks/rep_env.sh
+RUN chmod +x /userdbks/external_metastore.sh
 USER userdbks
 WORKDIR /userdbks
 
