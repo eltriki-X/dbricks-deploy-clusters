@@ -15,12 +15,15 @@ ENV sql_dbs bbddsql
 ENV sqluser usuario
 ENV sqlpass password
 #User
-RUN useradd -m -d /${user} ${user} 
-RUN chown -hR ${user} /${user} 
-RUN adduser ${user} sudo
+RUN useradd -m -d /userdbks userdbks 
+RUN chown -hR userdbks /userdbks 
+RUN adduser userdbks sudo
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-ADD databrickscfg /${user}/.databrickscfg
-RUN chown -hR ${user} /usr/src/databricks-cli
-WORKDIR /${user}
+ADD databrickscfg /userdbks/.databrickscfg
+ADD rep_env.sh /userdbks/rep_env.sh
+RUN chown -hR userdbks /usr/src/databricks-cli
+USER userdbks
+WORKDIR /userdbks
 
-ENTRYPOINT [ "databricks" ]
+ENTRYPOINT [ "/userdbks/rep_env.sh" ]
+CMD ["databricks"]
