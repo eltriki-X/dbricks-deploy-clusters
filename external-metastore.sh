@@ -9,14 +9,17 @@ cat << 'EOF' > /databricks/driver/conf/00-custom-spark.conf
     # JDBC connect string for a JDBC metastore
     "spark.hadoop.javax.jdo.option.ConnectionURL" = "jdbc:sqlserver://sql_srv.database.windows.net:1433;database=sql_db;encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30;"
     # Username to use against metastore database
-    "spark.hadoop.javax.jdo.option.ConnectionUserName" = "sqluser"
+    "spark.hadoop.javax.jdo.option.ConnectionUserName" = "hivedb"
+
     # Password to use against metastore database
-    "spark.hadoop.javax.jdo.option.ConnectionPassword" = "sqlpass"
+    "spark.hadoop.javax.jdo.option.ConnectionPassword" = "123456789.Abc"
+
     # Driver class name for a JDBC metastore
     "spark.hadoop.javax.jdo.option.ConnectionDriverName" = "com.microsoft.sqlserver.jdbc.SQLServerDriver"
+
     # Spark specific configuration options
     "spark.sql.hive.metastore.version" = "2.3.0"
     # Skip this one if <hive-version> is 0.13.x.
     "spark.sql.hive.metastore.jars" = "maven"
-    }
-    EOF
+}
+EOF
