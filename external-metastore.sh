@@ -7,7 +7,8 @@ cat << 'EOF' > /databricks/driver/conf/00-custom-spark.conf
     # Hive specific configuration options.
     # spark.hadoop prefix is added to make sure these Hive specific options will propagate to the metastore client.
     # JDBC connect string for a JDBC metastore
-    "spark.hadoop.javax.jdo.option.ConnectionURL" = "jdbc:sqlserver://sql_srv.database.windows.net:1433;database=sql_db;encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30;"
+    "spark.hadoop.javax.jdo.option.ConnectionURL" = "jdbc:sqlserver://ll2bieunesqldatabrickshive.database.windows.net:1433;database=ll2bieunesdbdatabrickshive;encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30;"      
+
     # Username to use against metastore database
     "spark.hadoop.javax.jdo.option.ConnectionUserName" = "hivedb"
 
