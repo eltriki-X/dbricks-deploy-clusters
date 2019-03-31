@@ -4,8 +4,8 @@ WORKDIR /usr/src/databricks-cli
 COPY . .
 RUN pip install --upgrade pip && \
     pip install --upgrade databricks-cli
-#host = https://northeurope.azuredatabricks.net/?o=7257592137201481
-#token = dapi35899fd8d2d6b278ff29c4647f372373
+#host  = https://northeurope.azuredatabricks.net/?o=8325656638655829
+#token = dapi7729c02c9bf7589d772d9f797cbe7219
 ENV dbrick_wkspace website_dbricks
 ENV dbrick_tokenpw token_password
 ENV user userdbks
