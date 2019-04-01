@@ -1,0 +1,15 @@
+docker run -e sql_srv=ll2bieunesqldatabricks \
+-e sql_dbs=ll2bieunesqddatabricks \
+-e sqluser=admin_laliga \
+-e 'sqlpass=\__asdPOI032019!!' \
+-e dbrick_wkspace=https://northeurope.azuredatabricks.net/?o=8325656638655829 \
+-e dbrick_tokenpw=dapi7729c02c9bf7589d772d9f797cbe7219 \
+-it dbrickscli databricks fs cp /userdbks/external_metastore.sh dbfs:/databricks/init/external_metastore.sh --overwrite
+
+docker run -e sql_srv=ll2bieunesqldatabricks \
+-e sql_dbs=ll2bieunesqddatabricks \
+-e sqluser=admin_laliga \
+-e 'sqlpass=\__asdPOI032019!!' \
+-it ubuntu/hivehadoop \
+schematool -dbType mssql -initSchema
+
