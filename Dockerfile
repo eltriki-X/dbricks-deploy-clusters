@@ -8,6 +8,7 @@ RUN pip install --upgrade pip && \
 #token = dapi7729c02c9bf7589d772d9f797cbe7219
 ENV dbrick_wkspace website_dbricks
 ENV dbrick_tokenpw token_password
+ENV dbrick_etl_name cluster_etl_name
 ENV user userdbks
 #external_metastore - variable
 ENV sql_srv servidorsql
