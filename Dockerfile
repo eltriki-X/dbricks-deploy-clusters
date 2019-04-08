@@ -23,9 +23,11 @@ RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 ADD databrickscfg /userdbks/.databrickscfg
 ADD rep_env.sh /userdbks/rep_env.sh
 ADD external_metastore.sh /userdbks/external_metastore.sh
+ADD cluster_deploy.sh /userdbks/cluster_deploy.sh
 RUN chown -hR userdbks /usr/src/databricks-cli
 RUN chmod +x /userdbks/rep_env.sh
 RUN chmod +x /userdbks/external_metastore.sh
+RUN chmod +x /userdbks/cluster_deploy.sh
 USER userdbks
 WORKDIR /userdbks
 
