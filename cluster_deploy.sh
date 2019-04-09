@@ -57,34 +57,34 @@ _main() {
 
    #JOB - Databricks
     cluster_job='{
-        "name": ${CluName},
+        "name": "${CluName}",
             "new_cluster": {
                 "spark_version": "5.2.x-scala2.11",
                 "node_type_id": "Standard_DS3_v2",
-                "num_workers": ${num_wkrs}
+                "num_workers": "${num_wkrs}"
             },
         "libraries": [
             {
-                "jar": "dbfs:/my-jar.jar"
+                "jar": "${jar_path}"
             },
             {
-                "whl": "dbfs:/my/whl"
+                "whl": "${whl_path}"
             },
             {
                 "pypi": {
-                    "package": "simplejson=0.01",
-                    "repo":  "https://nexus.librerias.local"
+                    "package": "${pypi_name}",
+                    "repo":  "${pypi_repo}"
                     }
             }
         ],
         "timeout_seconds": 1200,
         "max_retries": 1,
         "schedule": {
-                "quartz_cron_expression": "0 15 22 ? * *",
+                "quartz_cron_expression": "${qz_cron_exp}",
                 "timezone_id": "Europe/Berlin"
         },
         "notebook_task": {
-            "notebook_path": "/job/config/librerias", 
+            "notebook_path": "/job/${path_job}  ", 
             "revision_timestamp": 0
         }
     }'
@@ -125,7 +125,7 @@ _main() {
     CluType=${CluType^^}
     case $CluType in
     JOB)
-        cluster_name=$cluster_name #$(cat $cluster_job | jq -r ".name")
+        #cluster_name=$cluster_name #$(cat $cluster_job | jq -r ".name")
         if cluster_exists $cluster_name; then 
             echo "Cluster ${cluster_name} already exists!"
         else
@@ -144,7 +144,7 @@ _main() {
         fi
         ;;
     ETL)
-        cluster_name=$cluster_name #$(cat $cluster_job | jq -r ".name")
+        #cluster_name=$cluster_name #$(cat $cluster_job | jq -r ".name")
         if cluster_exists $cluster_name; then 
             echo "Cluster ${cluster_name} already exists!"
         else
@@ -152,20 +152,20 @@ _main() {
             retl=$(databricks clusters create --json $cluster_etl | jq -r ".cluster_id")
             retl_id=$(databricks fs cp ./etl dbfs:/etl --overwrite)
             #Ahora comprobamos que el cluster se ha levantado y lanzamos los notebooks sobre el cluster creado en el paso anterior..
-            ctejob='{"name": "${JobName}",                                                                          
+            ctejob='{"name": "${name_etl}",                                                                          
                      "existing_cluster_id": "${retl_id}",                                                 
                      "email_notifications": {
-                                "on_start": [],
-                                "on_success": [],
-                                "on_failure": []
+                                "on_start": [${mail_start}],
+                                "on_success": [${mail_sucess}],
+                                "on_failure": [${mail_failure}]
                     },                                                                     
                      "timeout_seconds": 0,                                                                          
                      "schedule": {                                                                                  
-                     "quartz_cron_expression": "0 0 * * * ?",                                                     
+                     "quartz_cron_expression": "${qz_cron_exp}",                                                     
                      "timezone_id": "Europe/Berlin"                                                               
                      },                                                                                             
                      "notebook_task": {                                                                             
-                            "notebook_path": "/etl/common/european_soccer_events_01_etl",   
+                            "notebook_path": "/etl/",   
                             "revision_timestamp": 0}
                     }'
             run_etl=$(databricks jobs create --json "${ctejob}")                                                                                          )
