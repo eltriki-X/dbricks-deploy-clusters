@@ -5,10 +5,6 @@ set -o errexit
 set -o pipefail
 set -o nounset
 # set -o xtrace
-# Set path
-parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
-cd "$parent_path"
-env_file=$HOME"/.databrickscfg"
 # Constants
 RED='\033[0;31m'
 ORANGE='\033[0;33m'
@@ -32,8 +28,8 @@ wait_for_run () {
     done
 }
 cluster_exists () {
-    declare cluster_name="$1"
-    declare cluster=$(databricks clusters list | tr -s " " | cut -d" " -f2 | grep ^${cluster_name}$)
+    declare cluname="$1"
+    declare cluster=$(databricks clusters list | tr -s " " | cut -d" " -f2 | grep ^${cluname}$)
     if [[ -n $cluster ]]; then
         return 0; # cluster exists
     else
@@ -51,24 +47,27 @@ yes_or_no () {
 }
 _main() {
     # Create initial cluster, if not yet exists
-    read -p "Nombre Cluster ETL: " CluName
-    read -p "Numero de Workers : " num_wkrs
-    read -p "Cluster Type (ETL/JOB):" CluType
-
+    read -p "Nombre Cluster ETL: " cluster_name
+    read -p "Numero de Workers : " workers
+    read -p "Cluster Type (ETL/JOB):" cluster_type
+    read -p "NameJob: " job_name
+    read -p "HoraDespliegue: " quartz_cron
+    read -p "Path Job: " path
+     
    #JOB - Databricks
     cluster_job='{
-        "name": "${CluName}",
+        "name": "${cluster_name}",
             "new_cluster": {
                 "spark_version": "5.2.x-scala2.11",
                 "node_type_id": "Standard_DS3_v2",
-                "num_workers": "${num_wkrs}"
+                "num_workers": "${workers}"
             },
         "libraries": [
             {
                 "jar": "${jar_path}"
             },
             {
-                "whl": "${whl_path}"
+                "whl": "${wheel_path}"
             },
             {
                 "pypi": {
@@ -80,11 +79,11 @@ _main() {
         "timeout_seconds": 1200,
         "max_retries": 1,
         "schedule": {
-                "quartz_cron_expression": "${qz_cron_exp}",
+                "quartz_cron_expression": ${quartz_cron},
                 "timezone_id": "Europe/Berlin"
         },
         "notebook_task": {
-            "notebook_path": "/job/${path_job}  ", 
+            "notebook_path": "/job/${path}  ", 
             "revision_timestamp": 0
         }
     }'
@@ -92,9 +91,9 @@ _main() {
      cluster_etl='{
         "autoscale": {
             "min_workers": 2,
-            "max_workers": ${num_wkrs}
+            "max_workers": ${workers}
         },
-        "cluster_name": "${CluName}",
+        "cluster_name": "${cluster_name}",
         "spark_version": "5.3.x-scala2.11",
         "spark_conf": {
             "spark.databricks.cluster.profile": "serverless",
@@ -108,7 +107,7 @@ _main() {
         "ssh_public_keys": [],
         "custom_tags": {
             "ResourceClass": "Serverless",
-             "Entorno": "Run Cluster ETL ${CluName} "
+             "Entorno": "Run Cluster ETL ${cluster_name} "
         },
         "cluster_log_conf": {
             "dbfs": {
@@ -125,52 +124,52 @@ _main() {
     CluType=${CluType^^}
     case $CluType in
     JOB)
-        #cluster_name=$cluster_name #$(cat $cluster_job | jq -r ".name")
-        if cluster_exists $cluster_name; then 
+        cluname=${cluster_name} #$(cat $cluster_job | jq -r ".name")
+        if cluster_exists $cluname; then 
             echo "Cluster ${cluster_name} already exists!"
         else
             echo "Creating cluster ${cluster_name}..."
+            rjobcp=$(databricks fs cp ./job dbfs:/job --overwrite)
             rjob=$(databricks runs submit --json $cluster_job)
             rjob_id=$(echo $rjob | jq .run_id)   
             until [ "$(echo $rjob | jq -r .state.life_cycle_state)" = "TERMINATED" ]; 
             do
-                echo Waiting 
-                for run completion...; 
-                    sleep 5; 
-                    rjob=$(databricks runs get --run-id $rjob_id); 
-                    echo $rjob | jq .run_page_url; 
+                echo "Waiting for run completion..."; 
+                sleep 5; 
+                rjob=$(databricks runs get --run-id $rjob_id); 
+                echo $rjob | jq .run_page_url; 
             done
             echo $rjob |jq .
         fi
         ;;
     ETL)
-        #cluster_name=$cluster_name #$(cat $cluster_job | jq -r ".name")
-        if cluster_exists $cluster_name; then 
+        cluname=${cluster_name} #$(cat $cluster_job | jq -r ".name")
+        if cluster_exists $cluname; then 
             echo "Cluster ${cluster_name} already exists!"
         else
             echo "Creating cluster ${cluster_name}..."
             retl=$(databricks clusters create --json $cluster_etl | jq -r ".cluster_id")
             retl_id=$(databricks fs cp ./etl dbfs:/etl --overwrite)
             #Ahora comprobamos que el cluster se ha levantado y lanzamos los notebooks sobre el cluster creado en el paso anterior..
-            ctejob='{"name": "${name_etl}",                                                                          
+            ctejob='{"name": "${job_name}",                                                                          
                      "existing_cluster_id": "${retl_id}",                                                 
                      "email_notifications": {
-                                "on_start": [${mail_start}],
-                                "on_success": [${mail_sucess}],
-                                "on_failure": [${mail_failure}]
+                                "on_start": [${email_job_start}],
+                                "on_success": [${email_job_success}],
+                                "on_failure": [${email_job_failure}]
                     },                                                                     
                      "timeout_seconds": 0,                                                                          
                      "schedule": {                                                                                  
-                     "quartz_cron_expression": "${qz_cron_exp}",                                                     
+                     "quartz_cron_expression": ${quartz_cron},                                                     
                      "timezone_id": "Europe/Berlin"                                                               
                      },                                                                                             
                      "notebook_task": {                                                                             
-                            "notebook_path": "/etl/",   
+                            "notebook_path": "/etl/${path}",   
                             "revision_timestamp": 0}
                     }'
-            run_etl=$(databricks jobs create --json "${ctejob}")                                                                                          )
-        fi
-        ;;
+            run_etl=$(databricks jobs create --json ${ctejob})
+	fi
+	;;
     default)
         echo "Please, Select : ETL/JOB "
         ;;

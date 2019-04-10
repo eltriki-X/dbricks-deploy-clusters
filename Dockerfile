@@ -16,27 +16,23 @@ ENV sql_dbs bbddsql
 ENV sqluser usuario
 ENV sqlpass password
 #Databricks Manage Cluster Jobs - variables
-ENV nameetl etlname
-ENV cluName nameclu
-ENV num_wks wksnum
-ENV clutype typeclu
-ENV qzcrone expcron
+ENV job_name namejob
+ENV cluster_name nameclu
+ENV workers wksnum
+ENV cluster_type typeclu
+ENV quartz_cron expcron
+ENV path pathjob_etl
 #variables for ETL*****************
 #email_notification:
-ENV mlstart mailstart
-ENV mlsuces mailsucess
-ENV mlfailu mailfailure
-#notebook_task:
-ENV path_etl etlpath
+ENV email_job_start mailstart
+ENV email_job_success mailsucess
+ENV email_job_failure mailfailure
 #variables for JOB*****************
-ENV namejob jobname
 #libraries:
 ENV pypi_name libname
 ENV pypi_repo reponame
-ENV whl_path pathwhl
+ENV wheel_path pathwhl
 ENV jar_path pathjar
-#notebook_task:
-ENV path_job jobpath 
 #User
 ENV user userdbks
 RUN useradd -m -d /userdbks userdbks 
