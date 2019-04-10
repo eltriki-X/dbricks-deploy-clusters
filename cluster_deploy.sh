@@ -46,90 +46,82 @@ yes_or_no () {
     done
 }
 _main() {
-    # Create initial cluster, if not yet exists
-    read -p "Nombre Cluster ETL: " cluster_name
-    read -p "Numero de Workers : " workers
-    read -p "Cluster Type (ETL/JOB):" cluster_type
-    read -p "NameJob: " job_name
-    read -p "HoraDespliegue: " quartz_cron
-    read -p "Path Job: " path
-     
-   #JOB - Databricks
-    cluster_job='{
-        "name": "${cluster_name}",
-            "new_cluster": {
-                "spark_version": "5.2.x-scala2.11",
-                "node_type_id": "Standard_DS3_v2",
-                "num_workers": "${workers}"
-            },
-        "libraries": [
-            {
-                "jar": "${jar_path}"
-            },
-            {
-                "whl": "${wheel_path}"
-            },
-            {
-                "pypi": {
-                    "package": "${pypi_name}",
-                    "repo":  "${pypi_repo}"
-                    }
-            }
-        ],
-        "timeout_seconds": 1200,
-        "max_retries": 1,
-        "schedule": {
-                "quartz_cron_expression": ${quartz_cron},
-                "timezone_id": "Europe/Berlin"
-        },
-        "notebook_task": {
-            "notebook_path": "/job/${path}  ", 
-            "revision_timestamp": 0
-        }
-    }'
-   #ETL - Databricks 
-     cluster_etl='{
-        "autoscale": {
-            "min_workers": 2,
-            "max_workers": ${workers}
-        },
-        "cluster_name": "${cluster_name}",
-        "spark_version": "5.3.x-scala2.11",
-        "spark_conf": {
-            "spark.databricks.cluster.profile": "serverless",
-            "spark.databricks.repl.allowedLanguages": "python,sql",
-            "spark.databricks.acl.dfAclsEnabled": "true",
-            "spark.databricks.passthrough.enabled": "true",
-            "spark.databricks.pyspark.enableProcessIsolation": "true"
-        },
-        "node_type_id": "Standard_DS13_v2",
-        "driver_node_type_id": "Standard_DS4_v2",
-        "ssh_public_keys": [],
-        "custom_tags": {
-            "ResourceClass": "Serverless",
-             "Entorno": "Run Cluster ETL ${cluster_name} "
-        },
-        "cluster_log_conf": {
-            "dbfs": {
-                "destination": "dbfs:/cluster-logs"
-            }
-        },
-        "spark_env_vars": {
-            "PYSPARK_PYTHON": "/databricks/python3/bin/python3"
-        },
-        "autotermination_minutes": 120,
-        "enable_elastic_disk": true,
-        "init_scripts": []
-    }'  
-    CluType=${CluType^^}
-    case $CluType in
+#Job execute manual
+    #read -p "Nombre Cluster ETL: " cluster_name
+    #read -p "Numero de Workers : " workers
+    #read -p "Cluster Type (ETL/JOB):" cluster_type
+    #read -p "NameJob: " job_name
+    #read -p "HoraDespliegue: " quartz_cron
+    #read -p "Path Job: " path
+#JOB - Databricks
+   cluster_job=$( jq -n \
+                     --arg cn "$cluster_name" \
+                     --arg wk "$workers" \
+                     --arg jp "$jar_path" \
+                     --arg wp "$wheel_path" \
+                     --arg pn "$pypi_name" \
+                     --arg pr "$pypi_repo" \
+                     --arg qc "$quartz_cron" \
+                     --arg pt /job/"$path" \
+                    '{
+                    name: $cn,
+                    new_cluster: {             
+                        spark_version: "5.2.x-scala2.11",
+                        node_type_id: "Standard_DS3_v2",
+                        num_workers: $wk
+                    },
+                    libraries: [
+                    { jar: $jp },
+                    { whl: $wp },
+                    { pypi: {
+                            package: $pn,
+                            repo: $pr } } ],
+                    timeout_seconds: 1200,
+                    max_retries: 1,
+                    schedule: {
+                        quartz_cron_expression: $qc,
+                        timezone_id: "Europe/Berlin"
+                    },
+                    notebook_task: {
+                        notebook_path: $pt, 
+                        revision_timestamp: 0 }
+                    }')
+#ETL - Databricks 
+     cluster_etl=$( jq -n \
+                     --arg cn "$cluster_name" \
+                     --arg wk "$workers" \
+                    '{
+                    autoscale: {
+                        min_workers: 2,
+                        max_workers": $wk },
+                    cluster_name: $cn,
+                    spark_version: "5.3.x-scala2.11",
+                    spark_conf: {
+                        spark.databricks.cluster.profile: "serverless",
+                        spark.databricks.repl.allowedLanguages: "python,sql",
+                        spark.databricks.acl.dfAclsEnabled: "true",
+                        spark.databricks.passthrough.enabled: "true",
+                        spark.databricks.pyspark.enableProcessIsolation: "true" },
+                    node_type_id: "Standard_DS13_v2",
+                    driver_node_type_id: "Standard_DS4_v2",
+                    ssh_public_keys: [],
+                    cluster_log_conf: {
+                        dbfs: { destination: "dbfs:/cluster-logs" } },
+                    spark_env_vars: {
+                        PYSPARK_PYTHON: "/databricks/python3/bin/python3" },
+                    autotermination_minutes: 120,
+                    enable_elastic_disk: true,
+                    init_scripts: []
+                    }')  
+    cluster_type=${cluster_type^^}
+    case $cluster_type in
     JOB)
         cluname=${cluster_name} #$(cat $cluster_job | jq -r ".name")
         if cluster_exists $cluname; then 
-            echo "Cluster ${cluster_name} already exists!"
+            echo "Cluster $cluster_name already exists!"
         else
             echo "Creating cluster ${cluster_name}..."
-            rjobcp=$(databricks fs cp ./job dbfs:/job --overwrite)
+            rjobcp=$(databricks fs cp ./job dbfs:/job --overwrite --recursive)
             rjob=$(databricks runs submit --json $cluster_job)
             rjob_id=$(echo $rjob | jq .run_id)   
             until [ "$(echo $rjob | jq -r .state.life_cycle_state)" = "TERMINATED" ]; 
