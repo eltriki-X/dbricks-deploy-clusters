@@ -87,7 +87,7 @@ _main() {
 #ETL - Databricks 
     cluster_etl=$(jq -n \
                     --arg cn "$cluster_name" \
-                    --arg wk "$workers" \
+                    --arg wk $workers \
                     '{
                         cluster_name: $cn,
                         autoscale: {
@@ -119,7 +119,7 @@ _main() {
             echo "Cluster ${cluster_name} already exists!"
         else
             echo "Creating cluster ${cluster_name}..."
-            rjobcp=$( databricks workspace import_dir ./job /job -o -e)
+            rjobcp=$(databricks workspace import_dir ./job /job -o -e)
             echo "${rjobcp}"
             rjob=$(databricks runs submit --json "${cluster_job}")
             echo ${rjob}
@@ -128,7 +128,7 @@ _main() {
             do
                 echo "Waiting for run completion..."; 
                 sleep 5; 
-                rjob=$(databricks runs get --run-id $rjob_id); 
+                rjob=$(databricks runs get --run-id ${rjob_id}); 
                 echo $rjob | jq .run_page_url; 
             done
             echo $rjob |jq .
@@ -140,18 +140,20 @@ _main() {
             echo "Cluster ${cluster_name} already exists!"
         else
             echo "Creating cluster ${cluster_name}..."
-            retl=$(databricks clusters create --json $cluster_etl | jq -r ".cluster_id")
-            retl_id=$(databricks workspace import_dir ./etl /etl -o -e)
+            retl_id=$(databricks clusters create --json "${cluster_etl}" | jq -r ".cluster_id")
+            echo "${retl_id}"
+            retlcp=$(databricks workspace import_dir ./etl /etl -o -e)
+            echo "${retlcp}"
             #Ahora comprobamos que el cluster se ha levantado y lanzamos los notebooks sobre el cluster creado en el paso anterior..
             ctejob=$(jq -n \
-                        --arg jn "$job_name" \
-                        --arg ri "$retl_id" \
-                        --arg js "$email_job_start" \
-                        --arg jc "$email_job_success" \
-                        --arg jf "$email_job_failure" \
-                        --arg qc "$quartz_cron" \
-                        --arg pt /etl/"$path" \                       
-                        '{
+                       --arg jn "$job_name" \
+                       --arg ri "$retl_id" \
+                       --arg js "$email_job_start" \
+                       --arg jc "$email_job_success" \
+                       --arg jf "$email_job_failure" \
+                       --arg qc "$quartz_cron" \
+                       --arg pt /etl/"$path" \
+                       '{
                             name: $jn,                                                                          
                             existing_cluster_id: $ri,                                                 
                             email_notifications: {
@@ -166,7 +168,8 @@ _main() {
                                 notebook_path: $pt,   
                                 revision_timestamp: 0 } 
                         }')
-            run_etl=$(databricks jobs create --json $ctejob)
+            echo "${ctejob}"
+            run_etl=$(databricks jobs create --json "${ctejob}")
             echo $run_etl
 	    fi
 	    ;;
