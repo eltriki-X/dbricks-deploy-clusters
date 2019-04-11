@@ -1,11 +1,9 @@
 #!/bin/bash
-# Description: Config Databricks CLI
+# Description: Deploy Databricks Cluster ETL/JOB
 #
 set -o errexit
 set -o pipefail
 set -o nounset
-# set -o xtrace
-# Constants
 RED='\033[0;31m'
 ORANGE='\033[0;33m'
 NC='\033[0m'
@@ -34,6 +32,15 @@ cluster_exists () {
         return 0; # cluster exists
     else
         return 1; # cluster does not exists
+    fi
+}
+job_exists () {
+    declare jname="$1"
+    declare job=$(databricks jobs list | tr -s " "| cut -d" " -f2|grep ^${name})
+    if [[ -n $job ]]; then
+        return 0; # Jobs exists
+    else    
+        return 1; # Jobs does not exists
     fi
 }
 yes_or_no () {
@@ -112,6 +119,11 @@ _main() {
                         init_scripts: []
                     }')  
     cluster_type=${cluster_type^^}
+    if job_exists $job_name; then
+        echo "Job Name ${job_name} already exists in Databricks!"
+        exit 1
+    fi
+    
     case $cluster_type in
     JOB)
         cluname=${cluster_name} #$(cat $cluster_job | jq -r ".name")
@@ -121,13 +133,14 @@ _main() {
             echo "Creating cluster ${cluster_name}..."
             rjobcp=$(databricks workspace import_dir ./job /job -o -e)
             echo "${rjobcp}"
+            echo "Creating JOB:  ${job_name}.."
             rjob=$(databricks runs submit --json "${cluster_job}")
-            echo ${rjob}
+            echo "Id JOB run:  ${rjob}"
             rjob_id=$(echo ${rjob} | jq .run_id)   
             until [ "$(echo ${rjob} | jq -r .state.life_cycle_state)" = "TERMINATED" ]; 
             do
-                echo "Waiting for run completion..."; 
-                sleep 5; 
+                echo "Waiting 5 minute for run completion..."; 
+                sleep 5m; 
                 rjob=$(databricks runs get --run-id ${rjob_id}); 
                 echo $rjob | jq .run_page_url; 
             done

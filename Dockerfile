@@ -1,14 +1,18 @@
-FROM python:3.6
+FROM python:3.6-slim
 
 WORKDIR /usr/src/databricks-cli
 COPY . .
+RUN apt-get update -y && \
+    apt-get install curl
 RUN pip install --upgrade pip && \
     pip install --upgrade databricks-cli
 RUN curl -o /usr/local/bin/jq http://stedolan.github.io/jq/download/linux64/jq && \
     chmod +x /usr/local/bin/jq
+RUN apt-get clean
 #host  = https://northeurope.azuredatabricks.net/?o=8325656638655829
 #token = dapi7729c02c9bf7589d772d9f797cbe7219
 #Databricks Connection - variables
+
 ENV dbrick_wkspace website_dbricks
 ENV dbrick_tokenpw token_password
 #external_metastore - variables

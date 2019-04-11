@@ -20,6 +20,7 @@ docker run \
   -e dbrick_tokenpw=ID_TOKEN_GENERADO_DBRICKS \
   -it dbrickscli databricks fs cp /userdbks/external_metastore.sh dbfs:/databricks/init/external_metastore.sh --overwrite
 ```
+#############################################################################################################################
 ### Deploy Cluster ETL/JOB Databricks
 ##Run Dockerfile
 ```bash
