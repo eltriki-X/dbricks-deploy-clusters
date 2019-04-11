@@ -119,10 +119,12 @@ _main() {
             echo "Cluster ${cluster_name} already exists!"
         else
             echo "Creating cluster ${cluster_name}..."
-            databricks fs cp ./job dbfs:/job --overwrite --recursive
-            rjob=$(databricks runs submit --json-file $cluster_job)
-            rjob_id=$(echo $rjob | jq .run_id)   
-            until [ "$(echo $rjob | jq -r .state.life_cycle_state)" = "TERMINATED" ]; 
+            rjobcp=$( databricks workspace import_dir ./job /job -o -e)
+            echo "${rjobcp}"
+            rjob=$(databricks runs submit --json "${cluster_job}")
+            echo ${rjob}
+            rjob_id=$(echo ${rjob} | jq .run_id)   
+            until [ "$(echo ${rjob} | jq -r .state.life_cycle_state)" = "TERMINATED" ]; 
             do
                 echo "Waiting for run completion..."; 
                 sleep 5; 
@@ -139,7 +141,7 @@ _main() {
         else
             echo "Creating cluster ${cluster_name}..."
             retl=$(databricks clusters create --json $cluster_etl | jq -r ".cluster_id")
-            retl_id=$(databricks fs cp ./etl dbfs:/etl --overwrite --recursive)
+            retl_id=$(databricks workspace import_dir ./etl /etl -o -e)
             #Ahora comprobamos que el cluster se ha levantado y lanzamos los notebooks sobre el cluster creado en el paso anterior..
             ctejob=$(jq -n \
                         --arg jn "$job_name" \
@@ -148,7 +150,7 @@ _main() {
                         --arg jc "$email_job_success" \
                         --arg jf "$email_job_failure" \
                         --arg qc "$quartz_cron" \
-                        --arg pt /job/"$path" \                       
+                        --arg pt /etl/"$path" \                       
                         '{
                             name: $jn,                                                                          
                             existing_cluster_id: $ri,                                                 
