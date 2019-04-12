@@ -3,7 +3,7 @@ FROM python:3.6-slim
 WORKDIR /usr/src/databricks-cli
 COPY . .
 RUN apt-get update -y && \
-    apt-get install curl
+    apt-get install curl -y
 RUN pip install --upgrade pip && \
     pip install --upgrade databricks-cli
 RUN curl -o /usr/local/bin/jq http://stedolan.github.io/jq/download/linux64/jq && \

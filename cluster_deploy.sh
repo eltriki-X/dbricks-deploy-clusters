@@ -60,14 +60,38 @@ _main() {
     #read -p "NameJob: " job_name
     #read -p "HoraDespliegue: " quartz_cron
     #read -p "Path Job: " path
+
 #JOB - Databricks
+ --arg jp "$jar_path" \
+
+while [$jar_path !=  "pathjar" || $wheel_path != "pathwhl" || $pypi_name != "libname"]; do
+    if [$jar_path == "pathjar"]; then
+        libstr1=""
+    else 
+        libstr1="{ jar: $jar_path }"
+    fi
+    if [$whl_path == "pathwhl"]; then
+        libstr2=""
+    else 
+        libstr2="{ whl: $whl_path }"
+    fi
+    if [$pypi_name == "libname"]; then
+        libstr3=""
+    else 
+        libstr3="{ pypi: { package: $pypi_name, repo: $pypi_repo } }"
+    fi
+    libstr="$libstring1,libstring2,libstring"
+
+done
+    { jar: $jp },
+                            { whl: $wp },
+                            { pypi: {
+                                    package: $pn,
+                                    repo: $pr } }
     cluster_job=$(jq -n \
                     --arg cn "$cluster_name" \
                     --arg wk "$workers" \
-                    --arg jp "$jar_path" \
-                    --arg wp "$wheel_path" \
-                    --arg pn "$pypi_name" \
-                    --arg pr "$pypi_repo" \
+                   
                     --arg qc "$quartz_cron" \
                     --arg pt /job/"$path" \
                     '{
@@ -77,11 +101,7 @@ _main() {
                             node_type_id: "Standard_DS3_v2",
                             num_workers: $wk },
                         libraries: [
-                            { jar: $jp },
-                            { whl: $wp },
-                            { pypi: {
-                                    package: $pn,
-                                    repo: $pr } } ],
+                             ],
                         timeout_seconds: 1200,
                         max_retries: 1,
                         schedule: {
@@ -123,7 +143,6 @@ _main() {
         echo "Job Name ${job_name} already exists in Databricks!"
         exit 1
     fi
-    
     case $cluster_type in
     JOB)
         cluname=${cluster_name} #$(cat $cluster_job | jq -r ".name")
