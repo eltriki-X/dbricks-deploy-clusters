@@ -62,36 +62,26 @@ _main() {
     #read -p "Path Job: " path
 
 #JOB - Databricks
- --arg jp "$jar_path" \
-
-while [$jar_path !=  "pathjar" || $wheel_path != "pathwhl" || $pypi_name != "libname"]; do
-    if [$jar_path == "pathjar"]; then
+    if [ "$jar_path" == "pathjar" ]; then
         libstr1=""
     else 
-        libstr1="{ jar: $jar_path }"
+        libstr1="{ jar: dbfs:/librerias/$jar_path }"
     fi
-    if [$whl_path == "pathwhl"]; then
+    if [ "$wheel_path" == "pathwhl" ]; then
         libstr2=""
     else 
-        libstr2="{ whl: $whl_path }"
+        libstr2="{ whl: dbfs:/librerias/$wheel_path }"
     fi
-    if [$pypi_name == "libname"]; then
+    if [ "$pypi_name" == "libname" ]; then
         libstr3=""
     else 
         libstr3="{ pypi: { package: $pypi_name, repo: $pypi_repo } }"
     fi
-    libstr="$libstring1,libstring2,libstring"
-
-done
-    { jar: $jp },
-                            { whl: $wp },
-                            { pypi: {
-                                    package: $pn,
-                                    repo: $pr } }
+    
     cluster_job=$(jq -n \
                     --arg cn "$cluster_name" \
                     --arg wk "$workers" \
-                   
+                    --arg lt "$libstr" \
                     --arg qc "$quartz_cron" \
                     --arg pt /job/"$path" \
                     '{
@@ -100,7 +90,7 @@ done
                             spark_version: "5.2.x-scala2.11",
                             node_type_id: "Standard_DS3_v2",
                             num_workers: $wk },
-                        libraries: [
+                        libraries: [ $lt
                              ],
                         timeout_seconds: 1200,
                         max_retries: 1,
