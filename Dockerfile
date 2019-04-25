@@ -38,6 +38,10 @@ ENV pypi_name libname
 ENV pypi_repo reponame
 ENV wheel_path pathwhl
 ENV jar_path pathjar
+#variables for cluster-init-scripts
+ENV azure_tenant_id=az_tenant_id
+ENV usr_sp user_serviceprincipal
+ENV pwd_sp pwd_serviceprincipal
 #User
 ENV user userdbks
 RUN useradd -m -d /userdbks userdbks 
