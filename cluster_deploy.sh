@@ -89,7 +89,11 @@ _main() {
     #read -p "HoraDespliegue: " quartz_cron
     #read -p "Path Job: " path
 
+    # copy cluster-scoped script 
+    databricks fs cp /tools/resources/databricks/adls_credentials.sh dbfs:/databricks/scripts/$cluster_name/adls_credentials.sh --overwrite
+    databricks workspace import /tools/resources/databricks/notebook/arq/adlconnection.py /arq/adlconnection -o -l PYTHON
 #JOB - Databricks
+
    cluster_job=$(jq -n \
                     --arg cn "$cluster_name" \
                     --arg wk "$workers" \
@@ -98,7 +102,7 @@ _main() {
                     --arg pn "$pypi_name" \
                     --arg pr "$pypi_repo" \
                     --arg qc "$quartz_cron" \
-                    --arg pt /job/"$path" \
+                    --arg pt /job/"$project_name"/"$path" \
                     '{
                         name: $cn,
                         new_cluster: {             
@@ -121,6 +125,13 @@ _main() {
                             notebook_path: $pt, 
                             revision_timestamp: 0 }
                     }')
+    # temporal: testing values !!!!
+    #export jar_path=dbfs:/mnt/databricks/library.jar,dbfs:/mnt/databricks/library2.jar,dbfs:/mnt/databricks/library3.jar
+    #export wheel_path=dbfs:/mnt/libraries/mlflow-0.0.1.dev0-py2-none-any.whl,dbfs:/mnt/libraries/wheel-libraries.wheelhouse.zip
+    #export pypi_name=simplejson==3.8.0,numpy,pandas
+
+    # add all jar libraries
+
 add_libraries
 #ETL - Databricks 
     cluster_etl=$(jq -n \
@@ -143,6 +154,11 @@ add_libraries
                         ssh_public_keys: [],
                         cluster_log_conf: {
                             dbfs: { destination: "dbfs:/cluster-logs" } },
+                         init_scripts: [ {
+                            "dbfs": {
+                                "destination": "dbfs:/databricks/scripts/$cluster_name/adls_credentials.sh"
+                            }
+                        } ],
                         spark_env_vars: {
                             PYSPARK_PYTHON: "/databricks/python3/bin/python3" },
                         autotermination_minutes: 120,
@@ -161,7 +177,7 @@ add_libraries
             echo "Cluster ${cluster_name} already exists!"
         else
             echo "Creating cluster ${cluster_name}..."
-            rjobcp=$(databricks workspace import_dir ./job /job -o -e)
+            rjobcp=$(databricks workspace import_dir job/$project_name /job/$project_name -o -e)
             echo "${rjobcp}"
             echo "Creating JOB:  ${job_name}.."
             rjob=$(databricks runs submit --json "${cluster_job}")
@@ -185,7 +201,7 @@ add_libraries
             echo "Creating cluster ${cluster_name}..."
             retl_id=$(databricks clusters create --json "${cluster_etl}" | jq -r ".cluster_id")
             echo "${retl_id}"
-            retlcp=$(databricks workspace import_dir ./etl /etl -o -e)
+            retlcp=$(databricks workspace import_dir etl/$project_name /etl/$project_name -o -e)
             echo "${retlcp}"
             #Ahora comprobamos que el cluster se ha levantado y lanzamos los notebooks sobre el cluster creado en el paso anterior..
             ctejob=$(jq -n \
@@ -195,7 +211,7 @@ add_libraries
                        --arg jc "$email_job_success" \
                        --arg jf "$email_job_failure" \
                        --arg qc "$quartz_cron" \
-                       --arg pt /etl/"$path" \
+                       --arg pt /etl/"$project_name"/"$path" \
                        '{
                             name: $jn,                                                                          
                             existing_cluster_id: $ri,                                                 
