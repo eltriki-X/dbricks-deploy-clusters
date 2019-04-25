@@ -1,6 +1,6 @@
 FROM python:3.6-slim
-
 WORKDIR /usr/src/databricks-cli
+ARG VERSION=0.8.6
 COPY . .
 RUN apt-get update -y && \
     apt-get install curl -y

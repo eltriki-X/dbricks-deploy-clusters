@@ -52,6 +52,34 @@ yes_or_no () {
         esac
     done
 }
+add_libraries () {
+
+    # add jar libraries
+    IFS=', ' read -r -a array <<< "$jar_path"
+    for element in "${array[@]}"
+    do
+        #echo $element
+        cluster_job=$(jq '.libraries += [{"jar": "'$element'"}]' <<< "$cluster_job")
+    done
+
+    # add wheel libraries
+    IFS=', ' read -r -a array <<< "$wheel_path"
+    for element in "${array[@]}"
+    do
+        #echo $element
+        cluster_job=$(jq '.libraries += [{"whl": "'$element'"}]' <<< "$cluster_job")
+    done
+
+    # add pypi libraries
+    IFS=', ' read -r -a array <<< "$pypi_name"
+    for element in "${array[@]}"
+    do
+        #echo $element
+        cluster_job=$(jq '.libraries += [{"pypi": { "package": "'$element'"}}]' <<< "$cluster_job")
+    done
+
+}
+
 _main() {
 #Job execute manual
     #read -p "Nombre Cluster ETL: " cluster_name
@@ -62,26 +90,13 @@ _main() {
     #read -p "Path Job: " path
 
 #JOB - Databricks
-    if [ "$jar_path" == "pathjar" ]; then
-        libstr1=""
-    else 
-        libstr1="{ jar: dbfs:/librerias/$jar_path }"
-    fi
-    if [ "$wheel_path" == "pathwhl" ]; then
-        libstr2=""
-    else 
-        libstr2="{ whl: dbfs:/librerias/$wheel_path }"
-    fi
-    if [ "$pypi_name" == "libname" ]; then
-        libstr3=""
-    else 
-        libstr3="{ pypi: { package: $pypi_name, repo: $pypi_repo } }"
-    fi
-    
-    cluster_job=$(jq -n \
+   cluster_job=$(jq -n \
                     --arg cn "$cluster_name" \
                     --arg wk "$workers" \
-                    --arg lt "$libstr" \
+                    --arg jp "$jar_path" \
+                    --arg wp "$wheel_path" \
+                    --arg pn "$pypi_name" \
+                    --arg pr "$pypi_repo" \
                     --arg qc "$quartz_cron" \
                     --arg pt /job/"$path" \
                     '{
@@ -89,9 +104,14 @@ _main() {
                         new_cluster: {             
                             spark_version: "5.2.x-scala2.11",
                             node_type_id: "Standard_DS3_v2",
-                            num_workers: $wk },
-                        libraries: [ $lt
-                             ],
+                            num_workers: $wk,
+                            init_scripts: [ {
+                                "dbfs": {
+                                    "destination": "dbfs:/databricks/scripts/$cluster_name/adls_credentials.sh"
+                                }
+                            } ]
+                        },
+                        libraries: [ ],
                         timeout_seconds: 1200,
                         max_retries: 1,
                         schedule: {
@@ -101,6 +121,7 @@ _main() {
                             notebook_path: $pt, 
                             revision_timestamp: 0 }
                     }')
+add_libraries
 #ETL - Databricks 
     cluster_etl=$(jq -n \
                     --arg cn "$cluster_name" \
