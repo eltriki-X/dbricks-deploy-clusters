@@ -105,8 +105,7 @@ _main() {
 
     # copy cluster-scoped script 
     databricks fs cp /tools/resources/databricks/adls_credentials.sh dbfs:/databricks/scripts/$cluster_name/adls_credentials.sh --overwrite
-    databricks workspace import /tools/resources/databricks/notebook/arq/adlconnection.py /arq/adlconnection -o -l PYTHON
-    #JOB - Databricks
+    
 
     cluster_job=$(jq -n \
                     --arg cn "$cluster_name" \
