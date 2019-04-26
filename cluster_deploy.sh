@@ -53,7 +53,6 @@ yes_or_no () {
     done
 }
 add_libraries () {
-
     # add jar libraries
     IFS=', ' read -r -a array <<< "$jar_path"
     for element in "${array[@]}"
@@ -77,7 +76,22 @@ add_libraries () {
         #echo $element
         cluster_job=$(jq '.libraries += [{"pypi": { "package": "'$element'"}}]' <<< "$cluster_job")
     done
-
+}
+add_parameters () {
+    IFS=', ' read -r -a array <<< "$nbook_params"
+    for element in "${array[@]}"
+    do
+       case $cluster_type in
+       JOB) 
+            cluster_job=$(jq '.notebook_params += {{"'$element'"}}' <<< "$cluster_job")
+            ;;
+        ETL)
+            ctejob=$(jq '.notebook_params += {{"'$element'"}}' <<< "$ctejob")
+            ;;
+        default)
+            ;;
+        esac
+    done
 }
 
 _main() {
@@ -92,9 +106,9 @@ _main() {
     # copy cluster-scoped script 
     databricks fs cp /tools/resources/databricks/adls_credentials.sh dbfs:/databricks/scripts/$cluster_name/adls_credentials.sh --overwrite
     databricks workspace import /tools/resources/databricks/notebook/arq/adlconnection.py /arq/adlconnection -o -l PYTHON
-#JOB - Databricks
+    #JOB - Databricks
 
-   cluster_job=$(jq -n \
+    cluster_job=$(jq -n \
                     --arg cn "$cluster_name" \
                     --arg wk "$workers" \
                     --arg jp "$jar_path" \
@@ -123,7 +137,8 @@ _main() {
                             timezone_id: "Europe/Berlin" },
                         notebook_task: {
                             notebook_path: $pt, 
-                            revision_timestamp: 0 }
+                            revision_timestamp: 0 },
+                        notebook_params: { }
                     }')
     # temporal: testing values !!!!
     #export jar_path=dbfs:/mnt/databricks/library.jar,dbfs:/mnt/databricks/library2.jar,dbfs:/mnt/databricks/library3.jar
@@ -131,9 +146,9 @@ _main() {
     #export pypi_name=simplejson==3.8.0,numpy,pandas
 
     # add all jar libraries
+    add_libraries
+    #ETL - Databricks 
 
-add_libraries
-#ETL - Databricks 
     cluster_etl=$(jq -n \
                     --arg cn "$cluster_name" \
                     --arg wk $workers \
@@ -166,6 +181,7 @@ add_libraries
                         init_scripts: []
                     }')  
     cluster_type=${cluster_type^^}
+    add_parameters
     if job_exists $job_name; then
         echo "Job Name ${job_name} already exists in Databricks!"
         exit 1
@@ -225,7 +241,8 @@ add_libraries
                                 timezone_id: "Europe/Berlin" },                                                                                             
                             notebook_task: {                                                                             
                                 notebook_path: $pt,   
-                                revision_timestamp: 0 } 
+                                revision_timestamp: 0 },
+                            notebook_params: { }
                         }')
             echo "${ctejob}"
             run_etl=$(databricks jobs create --json "${ctejob}")
