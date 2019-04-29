@@ -52,62 +52,16 @@ yes_or_no () {
         esac
     done
 }
-add_libraries () {
-    # add jar libraries
-    IFS=', ' read -r -a array <<< "$jar_path"
-    for element in "${array[@]}"
-    do
-        #echo $element
-        cluster_job=$(jq '.libraries += [{"jar": "'$element'"}]' <<< "$cluster_job")
-    done
-
-    # add wheel libraries
-    IFS=', ' read -r -a array <<< "$wheel_path"
-    for element in "${array[@]}"
-    do
-        #echo $element
-        cluster_job=$(jq '.libraries += [{"whl": "'$element'"}]' <<< "$cluster_job")
-    done
-
-    # add pypi libraries
-    IFS=', ' read -r -a array <<< "$pypi_name"
-    for element in "${array[@]}"
-    do
-        #echo $element
-        cluster_job=$(jq '.libraries += [{"pypi": { "package": "'$element'"}}]' <<< "$cluster_job")
-    done
-}
-add_parameters () {
-    IFS=', ' read -r -a array <<< "$nbook_params"
-    for element in "${array[@]}"
-    do
-       case $cluster_type in
-       JOB) 
-            cluster_job=$(jq '.notebook_params += {{"'$element'"}}' <<< "$cluster_job")
-            ;;
-        ETL)
-            ctejob=$(jq '.notebook_params += {{"'$element'"}}' <<< "$ctejob")
-            ;;
-        default)
-            ;;
-        esac
-    done
-}
-
 _main() {
-#Job execute manual
-    #read -p "Nombre Cluster ETL: " cluster_name
-    #read -p "Numero de Workers : " workers
-    #read -p "Cluster Type (ETL/JOB):" cluster_type
-    #read -p "NameJob: " job_name
-    #read -p "HoraDespliegue: " quartz_cron
-    #read -p "Path Job: " path
-
-    # copy cluster-scoped script 
-    databricks fs cp /tools/resources/databricks/adls_credentials.sh dbfs:/databricks/scripts/$cluster_name/adls_credentials.sh --overwrite
-    
-
-    cluster_job=$(jq -n \
+    cluster_type=${cluster_type^^}
+    if job_exists $job_name; then
+        echo "Job Name ${job_name} already exists in Databricks!"
+        exit 1
+    fi
+    case $cluster_type in
+    #JOB - Databricks 
+    JOB)
+        cluster_job=$(jq -n \
                     --arg cn "$cluster_name" \
                     --arg wk "$workers" \
                     --arg jp "$jar_path" \
@@ -139,16 +93,67 @@ _main() {
                             revision_timestamp: 0 },
                         notebook_params: { }
                     }')
-    # temporal: testing values !!!!
-    #export jar_path=dbfs:/mnt/databricks/library.jar,dbfs:/mnt/databricks/library2.jar,dbfs:/mnt/databricks/library3.jar
-    #export wheel_path=dbfs:/mnt/libraries/mlflow-0.0.1.dev0-py2-none-any.whl,dbfs:/mnt/libraries/wheel-libraries.wheelhouse.zip
-    #export pypi_name=simplejson==3.8.0,numpy,pandas
+        add_libraries () {
+            # add jar libraries
+            IFS=', ' read -r -a array <<< "$jar_path"
+            for element in "${array[@]}"
+            do
+                #echo $element
+                cluster_job=$(jq '.libraries += [{"jar": "'$element'"}]' <<< "$cluster_job")
+            done
 
-    # add all jar libraries
-    add_libraries
+            # add wheel libraries
+            IFS=', ' read -r -a array <<< "$wheel_path"
+            for element in "${array[@]}"
+            do
+                #echo $element
+                cluster_job=$(jq '.libraries += [{"whl": "'$element'"}]' <<< "$cluster_job")
+            done
+
+            # add pypi libraries
+            IFS=', ' read -r -a array <<< "$pypi_name"
+            for element in "${array[@]}"
+            do
+                #echo $element
+                cluster_job=$(jq '.libraries += [{"pypi": { "package": "'$element'"}}]' <<< "$cluster_job")
+            done
+        }
+        add_libraries
+        echo ${cluster_job}
+        if [ -z "${nbook_params}" ]; then
+            echo "Not parameters in job"
+        else
+            IFS=', ' read -r -a array <<< "$nbook_params"
+            for element in "${array[@]}"
+            do
+                cluster_job=$(jq '.notebook_params += {{"'$element'"}}' <<< "$cluster_job")
+            done
+        fi
+        #Construccion de JSON 
+        cluname=${cluster_name} #$(cat $cluster_job | jq -r ".name")
+        if cluster_exists $cluname; then 
+            echo "Cluster ${cluster_name} already exists!"
+        else
+            echo "Creating cluster ${cluster_name}..."
+            rjobcp=$(databricks workspace import_dir job/$project_name /job/$project_name -o -e)
+            echo "${rjobcp}"
+            echo "Creating JOB:  ${job_name}.."
+            rjob=$(databricks runs submit --json "${cluster_job}")
+            echo "Id JOB run:  ${rjob}"
+            rjob_id=$(echo ${rjob} | jq .run_id)   
+            until [ "$(echo ${rjob} | jq -r .state.life_cycle_state)" = "TERMINATED" ]; 
+            do
+                echo "Waiting 5 minute for run completion..."; 
+                sleep 1m; 
+                rjob=$(databricks runs get --run-id ${rjob_id}); 
+                echo $rjob | jq .run_page_url; 
+            done
+            echo $rjob |jq .
+        fi
+        ;;
     #ETL - Databricks 
-
-    cluster_etl=$(jq -n \
+    ETL)
+        cluster_etl=$(jq -n \
                     --arg cn "$cluster_name" \
                     --arg wk $workers \
                     '{
@@ -178,37 +183,9 @@ _main() {
                         autotermination_minutes: 120,
                         enable_elastic_disk: true,
                         init_scripts: []
-                    }')  
-    cluster_type=${cluster_type^^}
-    add_parameters
-    if job_exists $job_name; then
-        echo "Job Name ${job_name} already exists in Databricks!"
-        exit 1
-    fi
-    case $cluster_type in
-    JOB)
-        cluname=${cluster_name} #$(cat $cluster_job | jq -r ".name")
-        if cluster_exists $cluname; then 
-            echo "Cluster ${cluster_name} already exists!"
-        else
-            echo "Creating cluster ${cluster_name}..."
-            rjobcp=$(databricks workspace import_dir job/$project_name /job/$project_name -o -e)
-            echo "${rjobcp}"
-            echo "Creating JOB:  ${job_name}.."
-            rjob=$(databricks runs submit --json "${cluster_job}")
-            echo "Id JOB run:  ${rjob}"
-            rjob_id=$(echo ${rjob} | jq .run_id)   
-            until [ "$(echo ${rjob} | jq -r .state.life_cycle_state)" = "TERMINATED" ]; 
-            do
-                echo "Waiting 5 minute for run completion..."; 
-                sleep 5m; 
-                rjob=$(databricks runs get --run-id ${rjob_id}); 
-                echo $rjob | jq .run_page_url; 
-            done
-            echo $rjob |jq .
-        fi
-        ;;
-    ETL)
+                    }') 
+        echo ${cluster_etl}
+        
         cluname=${cluster_name} #$(cat $cluster_job | jq -r ".name")
         if cluster_exists $cluname; then 
             echo "Cluster ${cluster_name} already exists!"
@@ -244,6 +221,15 @@ _main() {
                             notebook_params: { }
                         }')
             echo "${ctejob}"
+            if [ -z "${nbook_params}" ]; then
+                echo "Not parameters in etl"
+            else
+                IFS=', ' read -r -a array <<< "$nbook_params"
+                for element in "${array[@]}"
+                do
+                    ctejob=$(jq '.notebook_params += {{"'$element'"}}' <<< "$ctejob")
+                done
+            fi
             run_etl=$(databricks jobs create --json "${ctejob}")
             echo $run_etl
 	    fi
