@@ -43,16 +43,15 @@ yes_or_no () {
         esac
     done
 }
-_main() {
+_main () {
     cluster_type=${cluster_type^^}
-    
     case $cluster_type in
     #JOB - Databricks 
     JOB)
         job_exists=$(databricks jobs list | tr -s " "| cut -d" " -f2|grep ^${name})
         if [[ -n $job_exists ]]; then
             echo "Job Name ${job_name} already exists in Databricks!"
-            exit 0; # Jobs exists
+            exit 0 # Jobs exists
         else    
             cluster_job=$(jq -n \
                         --arg cn "$cluster_name" \
@@ -86,7 +85,7 @@ _main() {
                                 revision_timestamp: 0 },
                             notebook_params: { }
                         }')
-            add_libraries () {
+            add_libraries () { 
                 # add jar libraries
                 IFS=', ' read -r -a array <<< "$jar_path"
                 for element in "${array[@]}"
@@ -94,7 +93,6 @@ _main() {
                     #echo $element
                     cluster_job=$(jq '.libraries += [{"jar": "'$element'"}]' <<< "$cluster_job")
                 done
-
                 # add wheel libraries
                 IFS=', ' read -r -a array <<< "$wheel_path"
                 for element in "${array[@]}"
@@ -102,7 +100,6 @@ _main() {
                     #echo $element
                     cluster_job=$(jq '.libraries += [{"whl": "'$element'"}]' <<< "$cluster_job")
                 done
-
                 # add pypi libraries
                 IFS=', ' read -r -a array <<< "$pypi_name"
                 for element in "${array[@]}"
@@ -179,7 +176,6 @@ _main() {
                         init_scripts: []
                     }') 
         echo ${cluster_etl}
-        
         cluname=${cluster_name} #$(cat $cluster_job | jq -r ".name")
         if cluster_exists $cluname; then 
             echo "Cluster ${cluster_name} already exists!"
