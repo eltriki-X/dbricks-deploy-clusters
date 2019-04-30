@@ -34,15 +34,6 @@ cluster_exists () {
         return 1; # cluster does not exists
     fi
 }
-job_exists () {
-    declare jname="$1"
-    declare job=$(databricks jobs list | tr -s " "| cut -d" " -f2|grep ^${name})
-    if [[ -n $job ]]; then
-        return 0; # Jobs exists
-    else    
-        return 1; # Jobs does not exists
-    fi
-}
 yes_or_no () {
     while true; do
         read -p "$(echo -e ${ORANGE}"$* [y/n]: "${NC})" yn
@@ -54,71 +45,74 @@ yes_or_no () {
 }
 _main() {
     cluster_type=${cluster_type^^}
-    if job_exists $job_name; then
-        echo "Job Name ${job_name} already exists in Databricks!"
-        exit 1
-    fi
+    
     case $cluster_type in
     #JOB - Databricks 
     JOB)
-        cluster_job=$(jq -n \
-                    --arg cn "$cluster_name" \
-                    --arg wk "$workers" \
-                    --arg jp "$jar_path" \
-                    --arg wp "$wheel_path" \
-                    --arg pn "$pypi_name" \
-                    --arg pr "$pypi_repo" \
-                    --arg qc "$quartz_cron" \
-                    --arg pt /job/"$project_name"/"$path" \
-                    '{
-                        name: $cn,
-                        new_cluster: {             
-                            spark_version: "5.2.x-scala2.11",
-                            node_type_id: "Standard_DS3_v2",
-                            num_workers: $wk,
-                            init_scripts: [ {
-                                "dbfs": {
-                                    "destination": "dbfs:/databricks/scripts/$cluster_name/adls_credentials.sh"
-                                }
-                            } ]
-                        },
-                        libraries: [ ],
-                        timeout_seconds: 1200,
-                        max_retries: 1,
-                        schedule: {
-                            quartz_cron_expression: $qc,
-                            timezone_id: "Europe/Berlin" },
-                        notebook_task: {
-                            notebook_path: $pt, 
-                            revision_timestamp: 0 },
-                        notebook_params: { }
-                    }')
-        add_libraries () {
-            # add jar libraries
-            IFS=', ' read -r -a array <<< "$jar_path"
-            for element in "${array[@]}"
-            do
-                #echo $element
-                cluster_job=$(jq '.libraries += [{"jar": "'$element'"}]' <<< "$cluster_job")
-            done
+        job_exists=$(databricks jobs list | tr -s " "| cut -d" " -f2|grep ^${name})
+        if [[ -n $job_exists ]]; then
+            echo "Job Name ${job_name} already exists in Databricks!"
+            exit 0; # Jobs exists
+        else    
+            cluster_job=$(jq -n \
+                        --arg cn "$cluster_name" \
+                        --arg wk "$workers" \
+                        --arg jp "$jar_path" \
+                        --arg wp "$wheel_path" \
+                        --arg pn "$pypi_name" \
+                        --arg pr "$pypi_repo" \
+                        --arg qc "$quartz_cron" \
+                        --arg pt /job/"$project_name"/"$path" \
+                        '{
+                            name: $cn,
+                            new_cluster: {             
+                                spark_version: "5.2.x-scala2.11",
+                                node_type_id: "Standard_DS3_v2",
+                                num_workers: $wk,
+                                init_scripts: [ {
+                                    "dbfs": {
+                                        "destination": "dbfs:/databricks/scripts/$cluster_name/adls_credentials.sh"
+                                    }
+                                } ]
+                            },
+                            libraries: [ ],
+                            timeout_seconds: 1200,
+                            max_retries: 1,
+                            schedule: {
+                                quartz_cron_expression: $qc,
+                                timezone_id: "Europe/Berlin" },
+                            notebook_task: {
+                                notebook_path: $pt, 
+                                revision_timestamp: 0 },
+                            notebook_params: { }
+                        }')
+            add_libraries () {
+                # add jar libraries
+                IFS=', ' read -r -a array <<< "$jar_path"
+                for element in "${array[@]}"
+                do
+                    #echo $element
+                    cluster_job=$(jq '.libraries += [{"jar": "'$element'"}]' <<< "$cluster_job")
+                done
 
-            # add wheel libraries
-            IFS=', ' read -r -a array <<< "$wheel_path"
-            for element in "${array[@]}"
-            do
-                #echo $element
-                cluster_job=$(jq '.libraries += [{"whl": "'$element'"}]' <<< "$cluster_job")
-            done
+                # add wheel libraries
+                IFS=', ' read -r -a array <<< "$wheel_path"
+                for element in "${array[@]}"
+                do
+                    #echo $element
+                    cluster_job=$(jq '.libraries += [{"whl": "'$element'"}]' <<< "$cluster_job")
+                done
 
-            # add pypi libraries
-            IFS=', ' read -r -a array <<< "$pypi_name"
-            for element in "${array[@]}"
-            do
-                #echo $element
-                cluster_job=$(jq '.libraries += [{"pypi": { "package": "'$element'"}}]' <<< "$cluster_job")
-            done
-        }
-        add_libraries
+                # add pypi libraries
+                IFS=', ' read -r -a array <<< "$pypi_name"
+                for element in "${array[@]}"
+                do
+                    #echo $element
+                    cluster_job=$(jq '.libraries += [{"pypi": { "package": "'$element'"}}]' <<< "$cluster_job")
+                done
+            }
+            add_libraries
+        fi
         echo ${cluster_job}
         if [ -z "${nbook_params}" ]; then
             echo "Not parameters in job"
