@@ -45,6 +45,19 @@ yes_or_no () {
 }
 _main () {
     cluster_type=${cluster_type^^}
+    echo $cluster_type
+    echo "Variables de entorno cargadas"
+    echo ${project_name}
+    echo ${cluster_type}
+    echo ${job_name}
+    echo ${cluster_name}
+    echo ${workers}
+    echo ${path_notebook}
+    echo ${nbook_params}
+    echo ${quartz_cron}
+    echo ${pypi_name}
+    echo ${pypi_repo}
+
     case $cluster_type in
     #JOB - Databricks 
     JOB)
