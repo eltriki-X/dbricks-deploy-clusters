@@ -9,8 +9,8 @@ RUN pip install --upgrade pip && \
 RUN curl -o /usr/local/bin/jq http://stedolan.github.io/jq/download/linux64/jq && \
     chmod +x /usr/local/bin/jq
 RUN apt-get clean
-#host  = https://northeurope.azuredatabricks.net/?o=8325656638655829
-#token = dapi7729c02c9bf7589d772d9f797cbe7219
+#host  = https://northeurope.azuredatabricks.net/
+#token = dapi7729c02c9bf7589d77
 #Databricks Connection - variables
 
 ENV dbrick_wkspace website_dbricks
