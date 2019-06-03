@@ -43,6 +43,8 @@ yes_or_no () {
         esac
     done
 }
+
+
 _main () {
     cluster_type=${cluster_type^^}
     echo $cluster_type
