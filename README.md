@@ -1,4 +1,7 @@
+# NOTE:::::::::: If you have any issue with the code, please feel free to contact me in order to resolved the bugs.
 ### Test execution databricks-cli 
+
+
 ```bash
 
 docker run \
@@ -35,8 +38,8 @@ docker run \
 -e cluster_type=job \
 -e quartz_cron="0 * * * * ?" \
 -e path=common/european_soccer_events_01_etl \
--e dbrick_wkspace=https://northeurope.azuredatabricks.net/?o=7257592137201481 \
--e dbrick_tokenpw=dapie04c1ee475bd392b463400ad183a3fd0 \
+-e dbrick_wkspace=https://northeurope.azuredatabricks.net \
+-e dbrick_tokenpw=dapi75bd392b463400ad183a3fd0 \
 -it dbricks_cludeploy ./cluster_deploy.sh
 ```
 ##ETL Example
@@ -48,7 +51,7 @@ docker run \
 -e cluster_type=etl \
 -e quartz_cron="0 * * * * ?" \
 -e path=common/european_soccer_events_01_etl \
--e dbrick_wkspace=https://northeurope.azuredatabricks.net/?o=7257592137201481 \
--e dbrick_tokenpw=dapie04c1ee475bd392b463400ad183a3fd0 \
+-e dbrick_wkspace=https://northeurope.azuredatabricks.net \
+-e dbrick_tokenpw=da392b463400ad183a3fd0 \
 -it dbricks_cludeploy ./cluster_deploy.sh
 ```
