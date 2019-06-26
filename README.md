@@ -1,3 +1,5 @@
+# DATABRICKS DEPLOY CLUSTER BY bash script 
+
 # NOTE:::::::::: If you have any issue with the code, please feel free to contact me in order to resolved the bugs.
 ### Test execution databricks-cli 
 
